@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0f0f14;
+  --foreground: #f8fafc;
+  --card: #1a1a24;
+  --muted: #94a3b8;
+  --accent: #7c6ff7;
+  --coral: #ff6b6b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-coral: var(--coral);
+  --font-sans: var(--font-plus-jakarta);
+  --font-display: var(--font-dm-serif);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(124, 111, 247, 0.35);
+}
+
+@layer components {
+  .glass-card {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px);
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 15, 20, 0.72);
+    padding: 0.78rem 0.9rem;
+    color: white;
+    outline: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .field:focus {
+    border-color: rgba(124, 111, 247, 0.78);
+    box-shadow: 0 0 0 4px rgba(124, 111, 247, 0.12);
+    background: rgba(15, 15, 20, 0.92);
+  }
+
+  .field::placeholder {
+    color: rgba(148, 163, 184, 0.62);
+  }
+
+  .field option {
+    background: #1a1a24;
+    color: white;
+  }
+
+  .label {
+    margin-bottom: 0.5rem;
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+
+  .button-primary,
+  .button-secondary,
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 8px;
+    font-weight: 700;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+  }
+
+  .button-primary {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #7c6ff7;
+    padding: 0.72rem 1rem;
+    color: white;
+    box-shadow: 0 14px 34px rgba(124, 111, 247, 0.24);
+  }
+
+  .button-primary:hover {
+    transform: translateY(-1px);
+    background: #8a7fff;
+  }
+
+  .button-secondary {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.72rem 1rem;
+    color: #dbeafe;
+  }
+
+  .button-secondary:hover,
+  .icon-button:hover {
+    border-color: rgba(124, 111, 247, 0.36);
+    background: rgba(124, 111, 247, 0.14);
+    color: white;
+  }
+
+  .icon-button {
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 220ms ease-out;
 }
