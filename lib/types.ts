@@ -15,10 +15,28 @@ export interface Expense {
   monthKey: string;
 }
 
+export type CreditCardName = "visa" | "master";
+
+export interface CreditExpense {
+  id: string;
+  purchaseId: string;
+  totalAmount: number;
+  installments: number;
+  installmentNumber: number;
+  remainingInstallments: number;
+  installmentAmount: number;
+  description: string;
+  categoryId: string;
+  cardName: CreditCardName;
+  date: string;
+  monthKey: string;
+}
+
 export interface MonthData {
   monthKey: string;
   salary: number;
   expenses: Expense[];
+  creditExpenses: CreditExpense[];
 }
 
 export interface AppState {

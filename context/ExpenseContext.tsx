@@ -13,7 +13,7 @@ import {
 import { DEFAULT_CATEGORIES, STORAGE_KEY } from "@/lib/constants";
 import { getMonthKey, monthKeyFromDateInput, shiftMonth } from "@/lib/date";
 import { createId } from "@/lib/id";
-import type { AppState, Category, Expense, MonthData } from "@/lib/types";
+import type { AppState, Category, CreditExpense, Expense, MonthData } from "@/lib/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 type Action =
@@ -25,6 +25,14 @@ type Action =
   | { type: "UPDATE_EXPENSE"; expense: Expense }
   | { type: "DELETE_EXPENSE"; id: string; monthKey: string }
   | {
+      type: "ADD_CREDIT_EXPENSE";
+      expense: Omit<
+        CreditExpense,
+        "id" | "monthKey" | "purchaseId" | "installmentNumber" | "remainingInstallments"
+      >;
+    }
+  | { type: "DELETE_CREDIT_EXPENSE"; id: string; monthKey: string }
+  | {
       type: "ADD_CATEGORY";
       category: Omit<Category, "id" | "isDefault"> & { id?: string };
     }
@@ -35,6 +43,7 @@ interface ExpenseContextValue {
   state: AppState;
   currentMonth: MonthData;
   currentExpenses: Expense[];
+  currentCreditExpenses: CreditExpense[];
   dispatch: Dispatch<Action>;
   getCategoryById: (id: string) => Category | undefined;
 }
@@ -44,7 +53,15 @@ const ExpenseContext = createContext<ExpenseContextValue | undefined>(
 );
 
 function makeMonth(monthKey: string): MonthData {
-  return { monthKey, salary: 0, expenses: [] };
+  return { monthKey, salary: 0, expenses: [], creditExpenses: [] };
+}
+
+function shiftDateInput(value: string, amount: number): string {
+  const [year, month, day] = value.split("-").map(Number);
+  const targetMonth = month - 1 + amount;
+  const lastDayOfTargetMonth = new Date(year, targetMonth + 1, 0).getDate();
+  const date = new Date(year, targetMonth, Math.min(day || 1, lastDayOfTargetMonth));
+  return date.toISOString().slice(0, 10);
 }
 
 function ensureMonth(state: AppState, monthKey = state.currentMonthKey) {
@@ -82,7 +99,23 @@ function normalizeState(state: AppState): AppState {
   const currentMonthKey = state.currentMonthKey || getMonthKey();
   const nextState =
     state.currentMonthKey === currentMonthKey ? state : { ...state, currentMonthKey };
-  return ensureMonth(nextState, currentMonthKey);
+  const ensuredState = ensureMonth(nextState, currentMonthKey);
+  const months = Object.fromEntries(
+    Object.entries(ensuredState.months).map(([monthKey, month]) => [
+      monthKey,
+      {
+        ...month,
+        creditExpenses: (month.creditExpenses ?? []).map((expense) => ({
+          ...expense,
+          purchaseId: expense.purchaseId ?? expense.id,
+          installmentNumber: expense.installmentNumber ?? 1,
+          remainingInstallments: expense.remainingInstallments ?? expense.installments,
+        })),
+      },
+    ]),
+  );
+
+  return { ...ensuredState, months };
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -180,6 +213,68 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
     }
+    case "ADD_CREDIT_EXPENSE": {
+      const monthKey = monthKeyFromDateInput(action.expense.date);
+      const purchaseId = createId();
+      const installments = Math.max(action.expense.installments, 1);
+      let next = ensureMonth(state, monthKey);
+
+      for (let index = 0; index < installments; index += 1) {
+        const installmentMonthKey = shiftMonth(monthKey, index);
+        next = ensureMonth(next, installmentMonthKey);
+        const month = next.months[installmentMonthKey];
+        const expense: CreditExpense = {
+          ...action.expense,
+          id: createId(),
+          purchaseId,
+          installments,
+          installmentNumber: index + 1,
+          remainingInstallments: installments - index,
+          date: shiftDateInput(action.expense.date, index),
+          monthKey: installmentMonthKey,
+        };
+
+        next = {
+          ...next,
+          months: {
+            ...next.months,
+            [installmentMonthKey]: {
+              ...month,
+              creditExpenses: [expense, ...(month.creditExpenses ?? [])],
+            },
+          },
+        };
+      }
+
+      return next;
+    }
+    case "DELETE_CREDIT_EXPENSE": {
+      const month = state.months[action.monthKey];
+      if (!month) {
+        return state;
+      }
+      const targetExpense = (month.creditExpenses ?? []).find(
+        (expense) => expense.id === action.id,
+      );
+      const targetPurchaseId = targetExpense?.purchaseId ?? action.id;
+      const months = Object.fromEntries(
+        Object.entries(state.months).map(([monthKey, monthData]) => [
+          monthKey,
+          {
+            ...monthData,
+            creditExpenses: (monthData.creditExpenses ?? []).filter(
+              (expense) =>
+                expense.id !== action.id && expense.purchaseId !== targetPurchaseId,
+            ),
+          },
+        ]),
+      );
+
+      return {
+        ...state,
+        months,
+      };
+    }
     case "ADD_CATEGORY":
       return {
         ...state,
@@ -246,17 +341,21 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
   const currentExpenses = [...currentMonth.expenses].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
+  const currentCreditExpenses = [...currentMonth.creditExpenses].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   const value = useMemo<ExpenseContextValue>(
     () => ({
       state: normalizedState,
       currentMonth,
       currentExpenses,
+      currentCreditExpenses,
       dispatch,
       getCategoryById: (id) =>
         normalizedState.categories.find((category) => category.id === id),
     }),
-    [currentExpenses, currentMonth, normalizedState],
+    [currentCreditExpenses, currentExpenses, currentMonth, normalizedState],
   );
 
   return (

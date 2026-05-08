@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown, CreditCard, Landmark, Plus, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useExpenses } from "@/context/ExpenseContext";
 import { todayInputValue, toDateInputValue } from "@/lib/date";
 import { createId } from "@/lib/id";
-import type { Expense } from "@/lib/types";
+import { formatCurrency } from "@/lib/money";
+import type { CreditCardName, Expense } from "@/lib/types";
 import { CategoryForm } from "./CategoryForm";
 
 interface AddExpenseModalProps {
@@ -14,20 +15,34 @@ interface AddExpenseModalProps {
   onClose: () => void;
 }
 
+type PaymentMethod = "debit" | "credit";
+
 export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalProps) {
   const { state, dispatch } = useExpenses();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [amount, setAmount] = useState("");
+  const [installments, setInstallments] = useState("3");
+  const [cardName, setCardName] = useState<CreditCardName>("visa");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(todayInputValue());
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const parsedAmount = Number(amount);
+  const parsedInstallments = Math.max(Number(installments) || 0, 0);
+  const installmentAmount =
+    paymentMethod === "credit" && parsedAmount > 0 && parsedInstallments > 0
+      ? parsedAmount / parsedInstallments
+      : 0;
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
+    setPaymentMethod("debit");
     setAmount(expense ? String(expense.amount) : "");
+    setInstallments("3");
+    setCardName("visa");
     setDescription(expense?.description ?? "");
     setCategoryId(expense?.categoryId ?? state.categories[0]?.id ?? "");
     setDate(expense ? toDateInputValue(expense.date) : todayInputValue());
@@ -40,8 +55,11 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsedAmount = Number(amount);
     if (!parsedAmount || parsedAmount <= 0 || !categoryId) {
+      return;
+    }
+
+    if (paymentMethod === "credit" && (!parsedInstallments || parsedInstallments <= 0)) {
       return;
     }
 
@@ -54,6 +72,19 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
 
     if (expense) {
       dispatch({ type: "UPDATE_EXPENSE", expense: { ...expense, ...payload } });
+    } else if (paymentMethod === "credit") {
+      dispatch({
+        type: "ADD_CREDIT_EXPENSE",
+        expense: {
+          totalAmount: parsedAmount,
+          installments: parsedInstallments,
+          installmentAmount,
+          description: description.trim(),
+          categoryId,
+          cardName,
+          date,
+        },
+      });
     } else {
       dispatch({ type: "ADD_EXPENSE", expense: payload });
     }
@@ -64,7 +95,7 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#050508]/88 px-3 pb-3 backdrop-blur-md sm:items-center sm:p-6">
       <form
-        className="w-full max-w-xl animate-slide-up rounded-lg border border-white/10 bg-[#14141e] p-5 shadow-2xl shadow-black/60 sm:p-6"
+        className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl animate-slide-up overflow-y-auto rounded-lg border border-white/10 bg-[#14141e] p-5 shadow-2xl shadow-black/60 sm:max-h-[calc(100vh-3rem)] sm:p-6"
         onSubmit={submit}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
@@ -86,9 +117,72 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
           </button>
         </div>
 
+        {!expense ? (
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            <button
+              className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
+                paymentMethod === "debit"
+                  ? "border-violet-300/45 bg-violet-400/15 text-white"
+                  : "border-white/8 bg-white/[0.035] text-slate-300 hover:border-white/16 hover:bg-white/[0.055]"
+              }`}
+              onClick={() => setPaymentMethod("debit")}
+              type="button"
+            >
+              <span
+                className={`grid size-5 shrink-0 place-items-center rounded-full border ${
+                  paymentMethod === "debit" ? "border-violet-200" : "border-slate-500"
+                }`}
+              >
+                {paymentMethod === "debit" ? (
+                  <span className="size-2.5 rounded-full bg-violet-200" />
+                ) : null}
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 font-semibold">
+                  <Landmark className="size-4" />
+                  Débito
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-400">
+                  Impacta en el balance mensual
+                </span>
+              </span>
+            </button>
+            <button
+              className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
+                paymentMethod === "credit"
+                  ? "border-violet-300/45 bg-violet-400/15 text-white"
+                  : "border-white/8 bg-white/[0.035] text-slate-300 hover:border-white/16 hover:bg-white/[0.055]"
+              }`}
+              onClick={() => setPaymentMethod("credit")}
+              type="button"
+            >
+              <span
+                className={`grid size-5 shrink-0 place-items-center rounded-full border ${
+                  paymentMethod === "credit" ? "border-violet-200" : "border-slate-500"
+                }`}
+              >
+                {paymentMethod === "credit" ? (
+                  <span className="size-2.5 rounded-full bg-violet-200" />
+                ) : null}
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 font-semibold">
+                  <CreditCard className="size-4" />
+                  Tarjeta de crédito
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-400">
+                  Se guarda separado del sueldo
+                </span>
+              </span>
+            </button>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="sm:col-span-1">
-            <span className="label">Importe</span>
+            <span className="label">
+              {paymentMethod === "credit" && !expense ? "Precio total" : "Importe"}
+            </span>
             <input
               autoFocus
               className="field"
@@ -110,6 +204,56 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
               value={date}
             />
           </label>
+
+          {paymentMethod === "credit" && !expense ? (
+            <>
+              <label>
+                <span className="label">Tarjeta</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["visa", "master"] as CreditCardName[]).map((card) => (
+                    <button
+                      className={`rounded-lg border px-3 py-3 text-sm font-bold uppercase tracking-[0.12em] transition ${
+                        cardName === card
+                          ? "border-violet-300/45 bg-violet-400/15 text-white"
+                          : "border-white/8 bg-white/[0.035] text-slate-400 hover:border-white/16 hover:text-white"
+                      }`}
+                      key={card}
+                      onClick={() => setCardName(card)}
+                      type="button"
+                    >
+                      {card === "visa" ? "Visa" : "Master"}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label>
+                <span className="label">Cuotas</span>
+                <input
+                  className="field"
+                  min="1"
+                  onChange={(event) => setInstallments(event.target.value)}
+                  required
+                  type="number"
+                  value={installments}
+                />
+              </label>
+              <div className="sm:col-span-2 rounded-lg border border-violet-300/20 bg-violet-400/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-200">
+                  Valor por cuota
+                </p>
+                <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <p className="font-display text-3xl text-white">
+                    {formatCurrency(installmentAmount)}
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    {parsedInstallments || 0} cuotas de{" "}
+                    {formatCurrency(installmentAmount)}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : null}
+
           <div className="sm:col-span-2">
             <div className="mb-2 flex items-center justify-between gap-3">
               <span className="label mb-0">Categoría</span>
