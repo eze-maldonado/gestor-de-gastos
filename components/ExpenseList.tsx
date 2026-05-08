@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useExpenses } from "@/context/ExpenseContext";
 import { formatDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/money";
-import type { Category, Expense } from "@/lib/types";
+import type { Category, CurrencyCode, Expense } from "@/lib/types";
 import { AddExpenseModal } from "./AddExpenseModal";
 import { EmptyState } from "./EmptyState";
 
@@ -14,7 +14,16 @@ const PREVIEW_EXPENSES_PER_CATEGORY = 2;
 interface ExpenseGroup {
   category: Pick<Category, "id" | "name" | "icon" | "color">;
   expenses: Expense[];
-  total: number;
+  totals: Partial<Record<CurrencyCode, number>>;
+}
+
+const currencyOrder: CurrencyCode[] = ["ARS", "USD", "EUR"];
+
+function formatCurrencyTotals(totals: Partial<Record<CurrencyCode, number>>) {
+  return currencyOrder
+    .filter((currency) => totals[currency])
+    .map((currency) => formatCurrency(totals[currency] ?? 0, currency))
+    .join(" · ");
 }
 
 export function ExpenseList() {
@@ -35,7 +44,7 @@ export function ExpenseList() {
 
       if (group) {
         group.expenses.push(expense);
-        group.total += expense.amount;
+        group.totals[expense.currency] = (group.totals[expense.currency] ?? 0) + expense.amount;
         return;
       }
 
@@ -47,11 +56,13 @@ export function ExpenseList() {
           color: category?.color ?? "#7c6ff7",
         },
         expenses: [expense],
-        total: expense.amount,
+        totals: { [expense.currency]: expense.amount },
       });
     });
 
-    return [...grouped.values()].sort((a, b) => b.total - a.total);
+    return [...grouped.values()].sort(
+      (a, b) => (b.totals.ARS ?? 0) - (a.totals.ARS ?? 0),
+    );
   }, [currentExpenses, getCategoryById]);
 
   const openCreate = () => {
@@ -146,7 +157,7 @@ export function ExpenseList() {
                       </span>
                     </div>
                     <p className="text-sm text-slate-400">
-                      {formatCurrency(group.total)}
+                      {formatCurrencyTotals(group.totals)}
                     </p>
                   </div>
                   {isCollapsible ? (
@@ -181,7 +192,7 @@ export function ExpenseList() {
                         </p>
                       </div>
                       <p className="text-right text-base font-bold text-white sm:text-lg">
-                        {formatCurrency(expense.amount)}
+                        {formatCurrency(expense.amount, expense.currency)}
                       </p>
                       <div className="col-span-2 flex justify-end gap-1 sm:col-auto">
                         <button

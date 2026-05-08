@@ -5,8 +5,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useExpenses } from "@/context/ExpenseContext";
 import { todayInputValue, toDateInputValue } from "@/lib/date";
 import { createId } from "@/lib/id";
-import { formatCurrency } from "@/lib/money";
-import type { CreditCardName, Expense } from "@/lib/types";
+import {
+  CURRENCY_OPTIONS,
+  formatAmountInput,
+  formatCurrency,
+  parseAmountInput,
+} from "@/lib/money";
+import type { CreditCardName, CurrencyCode, Expense } from "@/lib/types";
 import { CategoryForm } from "./CategoryForm";
 
 interface AddExpenseModalProps {
@@ -21,13 +26,14 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
   const { state, dispatch } = useExpenses();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState<CurrencyCode>("ARS");
   const [installments, setInstallments] = useState("3");
   const [cardName, setCardName] = useState<CreditCardName>("visa");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(todayInputValue());
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const parsedAmount = Number(amount);
+  const parsedAmount = parseAmountInput(amount);
   const parsedInstallments = Math.max(Number(installments) || 0, 0);
   const installmentAmount =
     paymentMethod === "credit" && parsedAmount > 0 && parsedInstallments > 0
@@ -40,7 +46,8 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
     }
 
     setPaymentMethod("debit");
-    setAmount(expense ? String(expense.amount) : "");
+    setAmount(expense ? formatAmountInput(String(expense.amount)) : "");
+    setCurrency(expense?.currency ?? "ARS");
     setInstallments("3");
     setCardName("visa");
     setDescription(expense?.description ?? "");
@@ -65,6 +72,7 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
 
     const payload = {
       amount: parsedAmount,
+      currency,
       description: description.trim(),
       categoryId,
       date,
@@ -77,6 +85,7 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
         type: "ADD_CREDIT_EXPENSE",
         expense: {
           totalAmount: parsedAmount,
+          currency,
           installments: parsedInstallments,
           installmentAmount,
           description: description.trim(),
@@ -179,20 +188,37 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="sm:col-span-1">
+          <label>
             <span className="label">
               {paymentMethod === "credit" && !expense ? "Precio total" : "Importe"}
             </span>
-            <input
-              autoFocus
-              className="field"
-              min="1"
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="12500"
-              required
-              type="number"
-              value={amount}
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_5.25rem] gap-2">
+              <input
+                autoFocus
+                className="field"
+                inputMode="decimal"
+                onChange={(event) => setAmount(formatAmountInput(event.target.value))}
+                placeholder="12.500"
+                required
+                type="text"
+                value={amount}
+              />
+              <div className="relative">
+                <select
+                  aria-label="Moneda"
+                  className="field appearance-none px-2 pr-7 text-sm font-bold"
+                  onChange={(event) => setCurrency(event.target.value as CurrencyCode)}
+                  value={currency}
+                >
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+              </div>
+            </div>
           </label>
           <label className="sm:col-span-1">
             <span className="label">Fecha</span>
@@ -243,11 +269,11 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
                 </p>
                 <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <p className="font-display text-3xl text-white">
-                    {formatCurrency(installmentAmount)}
+                    {formatCurrency(installmentAmount, currency)}
                   </p>
                   <p className="text-sm text-slate-300">
                     {parsedInstallments || 0} cuotas de{" "}
-                    {formatCurrency(installmentAmount)}
+                    {formatCurrency(installmentAmount, currency)}
                   </p>
                 </div>
               </div>

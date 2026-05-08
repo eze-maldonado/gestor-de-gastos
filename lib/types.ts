@@ -9,11 +9,14 @@ export interface Category {
 export interface Expense {
   id: string;
   amount: number;
+  currency: CurrencyCode;
   description: string;
   categoryId: string;
   date: string;
   monthKey: string;
 }
+
+export type CurrencyCode = "ARS" | "USD" | "EUR";
 
 export type CreditCardName = "visa" | "master";
 
@@ -21,6 +24,7 @@ export interface CreditExpense {
   id: string;
   purchaseId: string;
   totalAmount: number;
+  currency: CurrencyCode;
   installments: number;
   installmentNumber: number;
   remainingInstallments: number;

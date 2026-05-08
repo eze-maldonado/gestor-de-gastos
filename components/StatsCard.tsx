@@ -8,9 +8,12 @@ import { formatCurrency } from "@/lib/money";
 export function StatsCard() {
   const { currentMonth, getCategoryById } = useExpenses();
   const stats = useMemo(() => {
-    const total = currentMonth.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const pesoExpenses = currentMonth.expenses.filter(
+      (expense) => expense.currency === "ARS",
+    );
+    const total = pesoExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const byCategory = new Map<string, number>();
-    currentMonth.expenses.forEach((expense) => {
+    pesoExpenses.forEach((expense) => {
       byCategory.set(expense.categoryId, (byCategory.get(expense.categoryId) ?? 0) + expense.amount);
     });
     const biggest = [...byCategory.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -18,7 +21,7 @@ export function StatsCard() {
     return {
       total,
       count: currentMonth.expenses.length,
-      average: currentMonth.expenses.length ? total / currentMonth.expenses.length : 0,
+      average: pesoExpenses.length ? total / pesoExpenses.length : 0,
       biggestCategoryId: biggest?.[0],
       biggestValue: biggest?.[1] ?? 0,
     };

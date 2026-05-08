@@ -105,8 +105,13 @@ function normalizeState(state: AppState): AppState {
       monthKey,
       {
         ...month,
+        expenses: month.expenses.map((expense) => ({
+          ...expense,
+          currency: expense.currency ?? "ARS",
+        })),
         creditExpenses: (month.creditExpenses ?? []).map((expense) => ({
           ...expense,
+          currency: expense.currency ?? "ARS",
           purchaseId: expense.purchaseId ?? expense.id,
           installmentNumber: expense.installmentNumber ?? 1,
           remainingInstallments: expense.remainingInstallments ?? expense.installments,

@@ -11,7 +11,10 @@ export function SalaryCard() {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const total = useMemo(
-    () => currentMonth.expenses.reduce((sum, expense) => sum + expense.amount, 0),
+    () =>
+      currentMonth.expenses
+        .filter((expense) => expense.currency === "ARS")
+        .reduce((sum, expense) => sum + expense.amount, 0),
     [currentMonth.expenses],
   );
   const remaining = currentMonth.salary - total;

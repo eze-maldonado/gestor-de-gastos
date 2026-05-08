@@ -18,7 +18,7 @@ export function PieChartCard() {
   const { currentMonth, getCategoryById } = useExpenses();
   const data = useMemo<ChartDatum[]>(() => {
     const grouped = new Map<string, number>();
-    currentMonth.expenses.forEach((expense) => {
+    currentMonth.expenses.filter((expense) => expense.currency === "ARS").forEach((expense) => {
       grouped.set(expense.categoryId, (grouped.get(expense.categoryId) ?? 0) + expense.amount);
     });
 

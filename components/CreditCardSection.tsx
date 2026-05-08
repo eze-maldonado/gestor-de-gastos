@@ -6,6 +6,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useExpenses } from "@/context/ExpenseContext";
 import { formatDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/money";
+import type { CurrencyCode } from "@/lib/types";
 import { EmptyState } from "./EmptyState";
 
 interface ChartDatum {
@@ -16,16 +17,27 @@ interface ChartDatum {
   icon: string;
 }
 
+const currencyOrder: CurrencyCode[] = ["ARS", "USD", "EUR"];
+
+function formatCurrencyTotals(totals: Partial<Record<CurrencyCode, number>>) {
+  return currencyOrder
+    .filter((currency) => totals[currency])
+    .map((currency) => formatCurrency(totals[currency] ?? 0, currency))
+    .join(" · ");
+}
+
 export function CreditCardSection() {
   const { currentCreditExpenses, dispatch, getCategoryById } = useExpenses();
   const chartData = useMemo<ChartDatum[]>(() => {
     const grouped = new Map<string, number>();
-    currentCreditExpenses.forEach((expense) => {
-      grouped.set(
-        expense.categoryId,
-        (grouped.get(expense.categoryId) ?? 0) + expense.installmentAmount,
-      );
-    });
+    currentCreditExpenses
+      .filter((expense) => expense.currency === "ARS")
+      .forEach((expense) => {
+        grouped.set(
+          expense.categoryId,
+          (grouped.get(expense.categoryId) ?? 0) + expense.installmentAmount,
+        );
+      });
 
     return [...grouped.entries()]
       .map(([categoryId, value]) => {
@@ -41,14 +53,23 @@ export function CreditCardSection() {
       .sort((a, b) => b.value - a.value);
   }, [currentCreditExpenses, getCategoryById]);
 
-  const pendingBalance = currentCreditExpenses.reduce(
-    (sum, expense) => sum + expense.installmentAmount * expense.remainingInstallments,
-    0,
+  const pendingBalance = currentCreditExpenses.reduce<Partial<Record<CurrencyCode, number>>>(
+    (totals, expense) => ({
+      ...totals,
+      [expense.currency]:
+        (totals[expense.currency] ?? 0) +
+        expense.installmentAmount * expense.remainingInstallments,
+    }),
+    {},
   );
-  const monthlyInstallments = currentCreditExpenses.reduce(
-    (sum, expense) => sum + expense.installmentAmount,
-    0,
+  const monthlyInstallments = currentCreditExpenses.reduce<Partial<Record<CurrencyCode, number>>>(
+    (totals, expense) => ({
+      ...totals,
+      [expense.currency]: (totals[expense.currency] ?? 0) + expense.installmentAmount,
+    }),
+    {},
   );
+  const monthlyInstallmentsArs = monthlyInstallments.ARS ?? 0;
 
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -74,12 +95,12 @@ export function CreditCardSection() {
               <CreditMetric
                 icon={<WalletCards className="size-5" />}
                 label="Saldo pendiente"
-                value={formatCurrency(pendingBalance)}
+                value={formatCurrencyTotals(pendingBalance)}
               />
               <CreditMetric
                 icon={<ReceiptText className="size-5" />}
                 label="Cuotas del mes"
-                value={formatCurrency(monthlyInstallments)}
+                value={formatCurrencyTotals(monthlyInstallments)}
               />
               <CreditMetric
                 icon={<CreditCard className="size-5" />}
@@ -112,7 +133,7 @@ export function CreditCardSection() {
                       borderRadius: "8px",
                       color: "#fff",
                     }}
-                    formatter={(value) => formatCurrency(Number(value))}
+                    formatter={(value) => formatCurrency(Number(value), "ARS")}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -122,7 +143,7 @@ export function CreditCardSection() {
                     Este mes
                   </p>
                   <p className="font-display text-3xl text-white">
-                    {formatCurrency(monthlyInstallments)}
+                    {formatCurrency(monthlyInstallmentsArs)}
                   </p>
                 </div>
               </div>
@@ -140,7 +161,7 @@ export function CreditCardSection() {
                     <span className="min-w-0 truncate">{item.name}</span>
                   </span>
                   <span className="font-semibold text-white">
-                    {formatCurrency(item.value)}
+                    {formatCurrency(item.value, "ARS")}
                   </span>
                 </div>
               ))}
@@ -204,12 +225,13 @@ export function CreditCardSection() {
                   <div className="text-right">
                     <p className="text-sm text-slate-400">Por cuota</p>
                     <p className="text-lg font-bold text-white">
-                      {formatCurrency(expense.installmentAmount)}
+                      {formatCurrency(expense.installmentAmount, expense.currency)}
                     </p>
                     <p className="text-xs text-slate-500">
                       Pendiente{" "}
                       {formatCurrency(
                         expense.installmentAmount * expense.remainingInstallments,
+                        expense.currency,
                       )}
                     </p>
                   </div>
