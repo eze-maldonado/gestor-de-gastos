@@ -198,6 +198,7 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
                 className="field"
                 inputMode="decimal"
                 onChange={(event) => setAmount(formatAmountInput(event.target.value))}
+                pattern="[0-9.,]*"
                 placeholder="12.500"
                 required
                 type="text"

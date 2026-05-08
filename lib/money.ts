@@ -46,14 +46,16 @@ export function formatAmountInput(value: string): string {
     return "";
   }
 
+  const endsWithDecimalSeparator = /[,.]$/.test(cleanValue);
   const amount = parseAmountInput(cleanValue);
-  const hasDecimalInput = /[,.]\d{1,2}$/.test(cleanValue);
+  const hasDecimalInput = /[,.]\d{0,2}$/.test(cleanValue);
   const fractionDigits = hasDecimalInput
     ? cleanValue.split(/[,.]/).at(-1)?.length ?? 0
     : 0;
-
-  return new Intl.NumberFormat("es-AR", {
+  const formattedAmount = new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 2,
     minimumFractionDigits: fractionDigits,
   }).format(amount);
+
+  return endsWithDecimalSeparator ? `${formattedAmount},` : formattedAmount;
 }
