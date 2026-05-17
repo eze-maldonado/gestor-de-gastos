@@ -152,8 +152,8 @@ export function SavingsDashboard() {
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="glass-card p-5 sm:p-6">
+    <div className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <section className="glass-card min-w-0 overflow-hidden p-4 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-violet-200">Ahorros</p>
@@ -265,7 +265,7 @@ export function SavingsDashboard() {
             <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
               {currentSavings.map((saving) => (
                 <article
-                  className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg border border-white/8 bg-white/[0.035] p-3"
+                  className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-white/8 bg-white/[0.035] p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
                   key={saving.id}
                 >
                   <div className="min-w-0">
@@ -283,7 +283,7 @@ export function SavingsDashboard() {
                         : ""}
                     </p>
                   </div>
-                  <p className="text-right font-bold text-white">
+                  <p className="col-span-2 min-w-0 break-words font-bold text-white sm:col-auto sm:text-right">
                     {formatCurrency(saving.amount, saving.currency)}
                   </p>
                   <button
@@ -307,7 +307,7 @@ export function SavingsDashboard() {
         </div>
       </section>
 
-      <section className="glass-card p-5 sm:p-6">
+      <section className="glass-card min-w-0 overflow-hidden p-4 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-violet-200">Metas</p>
@@ -406,7 +406,7 @@ function CurrencySelect({
   value: CurrencyCode;
 }) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <select
         aria-label="Moneda"
         className="field appearance-none px-2 pr-7 text-sm font-bold"
@@ -426,9 +426,9 @@ function CurrencySelect({
 
 function SavingMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/8 bg-white/[0.035] p-4">
+    <div className="min-w-0 rounded-lg border border-white/8 bg-white/[0.035] p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-lg font-bold text-white">{value}</p>
+      <p className="mt-1 break-words text-lg font-bold text-white">{value}</p>
     </div>
   );
 }
@@ -449,7 +449,7 @@ function GoalCard({
   const monthlyNeed = monthCount ? remaining / monthCount : null;
 
   return (
-    <article className="rounded-lg border border-white/8 bg-white/[0.035] p-4">
+    <article className="min-w-0 rounded-lg border border-white/8 bg-white/[0.035] p-4">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate font-semibold text-white">{goal.name}</h3>
@@ -468,7 +468,7 @@ function GoalCard({
         </button>
       </div>
 
-      <div className="mb-2 flex items-end justify-between gap-3">
+      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
             Progreso
@@ -477,7 +477,7 @@ function GoalCard({
             {Math.round(progress)}%
           </p>
         </div>
-        <p className="text-right text-sm text-slate-300">
+        <p className="break-words text-sm text-slate-300 sm:text-right">
           {formatCurrency(savedAmount, goal.currency)} de{" "}
           {formatCurrency(goal.targetAmount, goal.currency)}
         </p>

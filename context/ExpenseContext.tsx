@@ -58,7 +58,7 @@ type Action =
   | {
       type: "SET_BUDGET_CONTROL_FIELD";
       monthKey: string;
-      field: "montoDisponible" | "adelantosSueldo";
+      field: "montoDisponible" | "adelantosSueldo" | "tarjetaPersonalTotal";
       value: number;
     }
   | {
@@ -158,6 +158,7 @@ function normalizeBudgetControl(
     monthKey,
     montoDisponible: budgetControl?.montoDisponible ?? 0,
     adelantosSueldo: budgetControl?.adelantosSueldo ?? 0,
+    tarjetaPersonalTotal: budgetControl?.tarjetaPersonalTotal,
     items: (budgetControl?.items ?? []).map((item) => ({
       ...item,
       estado: item.estado ?? "FALTA_PAGAR",
@@ -476,12 +477,12 @@ function reducer(state: AppState, action: Action): AppState {
       return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
         ...budgetControl,
         items: [
+          ...budgetControl.items,
           {
             ...action.item,
             id: createId(),
             observaciones: action.item.observaciones ?? "",
           },
-          ...budgetControl.items,
         ],
       }));
     case "UPDATE_FIXED_EXPENSE_ITEM":

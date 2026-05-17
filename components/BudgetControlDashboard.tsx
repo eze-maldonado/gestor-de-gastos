@@ -85,6 +85,14 @@ export function BudgetControlDashboard() {
           title="Gastos Móviles / Extras / Tarjetas"
           total={summary.variableTotal}
         />
+        {summary.cardTotal > 0 ? (
+          <PersonalCardTotal
+            cardTotal={summary.cardTotal}
+            effectiveCardTotal={summary.effectiveCardTotal}
+            onChange={(value) => setBudgetField("tarjetaPersonalTotal", value)}
+            value={summary.personalCardTotal}
+          />
+        ) : null}
       </div>
 
       <BudgetFooter
@@ -512,6 +520,59 @@ function BudgetFooter({
             {formatCurrency(realRemaining)}
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PersonalCardTotal({
+  cardTotal,
+  effectiveCardTotal,
+  onChange,
+  value,
+}: {
+  cardTotal: number;
+  effectiveCardTotal: number;
+  onChange: (value: number) => void;
+  value?: number;
+}) {
+  const [draft, setDraft] = useState(
+    value === undefined ? "" : formatAmountInput(String(value)),
+  );
+
+  useEffect(() => {
+    setDraft(value === undefined ? "" : formatAmountInput(String(value)));
+  }, [value]);
+
+  return (
+    <section className="glass-card p-5 sm:p-6">
+      <div className="grid gap-4 lg:grid-cols-[1fr_18rem] lg:items-end">
+        <div>
+          <p className="text-sm text-violet-200">Tarjeta compartida</p>
+          <h2 className="font-display text-3xl text-white">Total tarjeta mío</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Total detectado en tarjetas: {formatCurrency(cardTotal)}. Para el remanente
+            se descuenta {formatCurrency(effectiveCardTotal)}.
+          </p>
+        </div>
+        <label>
+          <span className="label">Monto a pagar por mí</span>
+          <input
+            className="field"
+            inputMode="decimal"
+            onBlur={() => onChange(parseAmountInput(draft))}
+            onChange={(event) => setDraft(formatAmountInput(event.target.value))}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            pattern="[0-9.,]*"
+            placeholder="1.500.000"
+            type="text"
+            value={draft}
+          />
+        </label>
       </div>
     </section>
   );

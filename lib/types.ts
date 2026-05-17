@@ -63,6 +63,7 @@ export interface MonthlyBudgetControl {
   monthKey: string;
   montoDisponible: number;
   adelantosSueldo: number;
+  tarjetaPersonalTotal?: number;
   items: FixedExpenseItem[];
 }
 

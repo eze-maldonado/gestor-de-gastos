@@ -13,9 +13,12 @@ export interface BudgetControlSummary {
   variableItems: FixedExpenseItem[];
   fixedTotal: number;
   variableTotal: number;
+  adjustedVariableTotal: number;
   totalMonth: number;
   realRemaining: number;
   cardTotal: number;
+  personalCardTotal?: number;
+  effectiveCardTotal: number;
 }
 
 function calculateTotal(items: FixedExpenseItem[]) {
@@ -33,24 +36,33 @@ export function useBudgetControl() {
     );
     const fixedTotal = calculateTotal(fixedItems);
     const variableTotal = calculateTotal(variableItems);
-    const totalMonth = fixedTotal + variableTotal;
-    const realRemaining = budgetControl.montoDisponible - totalMonth;
     const cardTotal = variableItems
       .filter((item) => item.concepto.toLocaleLowerCase("es-AR").includes("tarjeta"))
       .reduce((sum, item) => sum + item.monto, 0);
+    const personalCardTotal = budgetControl.tarjetaPersonalTotal;
+    const effectiveCardTotal = personalCardTotal ?? cardTotal;
+    const adjustedVariableTotal = variableTotal - cardTotal + effectiveCardTotal;
+    const totalMonth = fixedTotal + adjustedVariableTotal;
+    const realRemaining = budgetControl.montoDisponible - totalMonth;
 
     return {
       fixedItems,
       variableItems,
       fixedTotal,
       variableTotal,
+      adjustedVariableTotal,
       totalMonth,
       realRemaining,
       cardTotal,
+      personalCardTotal,
+      effectiveCardTotal,
     };
   }, [budgetControl]);
 
-  const setBudgetField = (field: "montoDisponible", value: number) => {
+  const setBudgetField = (
+    field: "montoDisponible" | "tarjetaPersonalTotal",
+    value: number,
+  ) => {
     dispatch({
       type: "SET_BUDGET_CONTROL_FIELD",
       monthKey: currentMonth.monthKey,
