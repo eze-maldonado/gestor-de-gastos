@@ -19,7 +19,9 @@ import type {
   CreditExpense,
   CurrencyCode,
   Expense,
+  FixedExpenseItem,
   MonthData,
+  MonthlyBudgetControl,
   SavingsGoal,
 } from "@/lib/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -48,7 +50,21 @@ type Action =
   | { type: "DELETE_CATEGORY"; id: string }
   | { type: "ADD_SAVINGS_GOAL"; goal: Omit<SavingsGoal, "id" | "createdAt"> }
   | { type: "UPDATE_SAVINGS_GOAL"; goal: SavingsGoal }
-  | { type: "DELETE_SAVINGS_GOAL"; id: string };
+  | { type: "DELETE_SAVINGS_GOAL"; id: string }
+  | {
+      type: "SET_BUDGET_CONTROL_FIELD";
+      monthKey: string;
+      field: "montoDisponible" | "adelantosSueldo";
+      value: number;
+    }
+  | {
+      type: "ADD_FIXED_EXPENSE_ITEM";
+      monthKey: string;
+      item: Omit<FixedExpenseItem, "id">;
+    }
+  | { type: "UPDATE_FIXED_EXPENSE_ITEM"; monthKey: string; item: FixedExpenseItem }
+  | { type: "TOGGLE_FIXED_EXPENSE_STATUS"; monthKey: string; id: string }
+  | { type: "DELETE_FIXED_EXPENSE_ITEM"; monthKey: string; id: string };
 
 interface ExpenseContextValue {
   state: AppState;
@@ -64,6 +80,15 @@ const ExpenseContext = createContext<ExpenseContextValue | undefined>(
   undefined,
 );
 
+function makeBudgetControl(monthKey: string): MonthlyBudgetControl {
+  return {
+    monthKey,
+    montoDisponible: 0,
+    adelantosSueldo: 0,
+    items: [],
+  };
+}
+
 function makeMonth(monthKey: string): MonthData {
   return {
     monthKey,
@@ -71,6 +96,7 @@ function makeMonth(monthKey: string): MonthData {
     salaryCurrency: "ARS",
     expenses: [],
     creditExpenses: [],
+    budgetControl: makeBudgetControl(monthKey),
   };
 }
 
@@ -120,6 +146,43 @@ function ensureMonth(state: AppState, monthKey = state.currentMonthKey) {
   };
 }
 
+function normalizeBudgetControl(
+  monthKey: string,
+  budgetControl?: Partial<MonthlyBudgetControl>,
+): MonthlyBudgetControl {
+  return {
+    monthKey,
+    montoDisponible: budgetControl?.montoDisponible ?? 0,
+    adelantosSueldo: budgetControl?.adelantosSueldo ?? 0,
+    items: (budgetControl?.items ?? []).map((item) => ({
+      ...item,
+      estado: item.estado ?? "FALTA_PAGAR",
+      categoria: item.categoria ?? "FIJO",
+      observaciones: item.observaciones ?? "",
+    })),
+  };
+}
+
+function updateBudgetControl(
+  state: AppState,
+  monthKey: string,
+  updater: (budgetControl: MonthlyBudgetControl) => MonthlyBudgetControl,
+) {
+  const next = ensureMonth(state, monthKey);
+  const month = next.months[monthKey];
+
+  return {
+    ...next,
+    months: {
+      ...next.months,
+      [monthKey]: {
+        ...month,
+        budgetControl: updater(month.budgetControl),
+      },
+    },
+  };
+}
+
 function makeInitialState(): AppState {
   const currentMonthKey = getMonthKey();
   const categories = DEFAULT_CATEGORIES.map((category) => ({
@@ -149,6 +212,7 @@ function normalizeState(state: AppState): AppState {
       {
         ...month,
         salaryCurrency: month.salaryCurrency ?? "ARS",
+        budgetControl: normalizeBudgetControl(monthKey, month.budgetControl),
         expenses: month.expenses.map((expense) => ({
           ...expense,
           currency: expense.currency ?? "ARS",
@@ -399,6 +463,47 @@ function reducer(state: AppState, action: Action): AppState {
           ]),
         ),
       };
+    case "SET_BUDGET_CONTROL_FIELD":
+      return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
+        ...budgetControl,
+        [action.field]: action.value,
+      }));
+    case "ADD_FIXED_EXPENSE_ITEM":
+      return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
+        ...budgetControl,
+        items: [
+          {
+            ...action.item,
+            id: createId(),
+            observaciones: action.item.observaciones ?? "",
+          },
+          ...budgetControl.items,
+        ],
+      }));
+    case "UPDATE_FIXED_EXPENSE_ITEM":
+      return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
+        ...budgetControl,
+        items: budgetControl.items.map((item) =>
+          item.id === action.item.id ? action.item : item,
+        ),
+      }));
+    case "TOGGLE_FIXED_EXPENSE_STATUS":
+      return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
+        ...budgetControl,
+        items: budgetControl.items.map((item) =>
+          item.id === action.id
+            ? {
+                ...item,
+                estado: item.estado === "PAGADO" ? "FALTA_PAGAR" : "PAGADO",
+              }
+            : item,
+        ),
+      }));
+    case "DELETE_FIXED_EXPENSE_ITEM":
+      return updateBudgetControl(state, action.monthKey, (budgetControl) => ({
+        ...budgetControl,
+        items: budgetControl.items.filter((item) => item.id !== action.id),
+      }));
     default:
       return state;
   }

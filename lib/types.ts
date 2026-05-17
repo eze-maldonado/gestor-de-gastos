@@ -46,12 +46,33 @@ export interface SavingsGoal {
   createdAt: string;
 }
 
+export type FixedExpenseStatus = "PAGADO" | "FALTA_PAGAR";
+
+export type FixedExpenseCategory = "FIJO" | "MOVIL_EXTRA";
+
+export interface FixedExpenseItem {
+  id: string;
+  concepto: string;
+  monto: number;
+  estado: FixedExpenseStatus;
+  categoria: FixedExpenseCategory;
+  observaciones?: string;
+}
+
+export interface MonthlyBudgetControl {
+  monthKey: string;
+  montoDisponible: number;
+  adelantosSueldo: number;
+  items: FixedExpenseItem[];
+}
+
 export interface MonthData {
   monthKey: string;
   salary: number;
   salaryCurrency: CurrencyCode;
   expenses: Expense[];
   creditExpenses: CreditExpense[];
+  budgetControl: MonthlyBudgetControl;
 }
 
 export interface AppState {
