@@ -15,7 +15,7 @@ const dmSerif = DM_Serif_Display({
 
 export const metadata: Metadata = {
   title: "Gestor de Gastos",
-  description: "Administrador personal de gastos con almacenamiento local.",
+  description: "Administrador personal de gastos sincronizado en Firebase.",
 };
 
 export default function RootLayout({

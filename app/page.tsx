@@ -1,10 +1,5 @@
-import { ExpenseProvider } from "@/context/ExpenseContext";
-import { ExpenseTrackerApp } from "@/components/ExpenseTrackerApp";
+import { AppShell } from "@/components/AppShell";
 
 export default function Home() {
-  return (
-    <ExpenseProvider>
-      <ExpenseTrackerApp />
-    </ExpenseProvider>
-  );
+  return <AppShell />;
 }

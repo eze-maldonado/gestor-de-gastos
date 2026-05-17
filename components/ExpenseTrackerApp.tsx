@@ -6,10 +6,12 @@ import {
   CreditCard,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   PiggyBank,
   Plus,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { CategoryManager } from "./CategoryManager";
 import { BudgetControlDashboard } from "./BudgetControlDashboard";
 import { CreditCardSection } from "./CreditCardSection";
@@ -33,6 +35,7 @@ const navItems = [
 ];
 
 export function ExpenseTrackerApp() {
+  const { logout, user } = useAuth();
   const [view, setView] = useState<View>("dashboard");
   const [isAddOpen, setIsAddOpen] = useState(false);
 
@@ -76,6 +79,22 @@ export function ExpenseTrackerApp() {
           <Plus className="size-4" />
           Nuevo gasto
         </button>
+        <div className="absolute bottom-5 left-5 right-5">
+          <div className="mb-3 min-w-0 rounded-lg border border-white/8 bg-white/[0.035] p-3">
+            <p className="truncate text-sm font-semibold text-white">
+              {user?.displayName ?? "Cuenta Google"}
+            </p>
+            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          </div>
+          <button
+            className="button-secondary w-full justify-center"
+            onClick={() => void logout()}
+            type="button"
+          >
+            <LogOut className="size-4" />
+            Salir
+          </button>
+        </div>
       </aside>
 
       <main className="pb-24 lg:ml-72 lg:pb-8">
@@ -97,6 +116,14 @@ export function ExpenseTrackerApp() {
             >
               <Plus className="size-4" />
               Nuevo gasto
+            </button>
+            <button
+              aria-label="Cerrar sesión"
+              className="icon-button justify-self-end sm:hidden"
+              onClick={() => void logout()}
+              type="button"
+            >
+              <LogOut className="size-4" />
             </button>
           </header>
 

@@ -6,12 +6,16 @@ import {
   useContext,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
 } from "react";
+import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
 import { DEFAULT_CATEGORIES, STORAGE_KEY } from "@/lib/constants";
 import { getMonthKey, monthKeyFromDateInput, shiftMonth } from "@/lib/date";
+import { db } from "@/lib/firebase";
 import { createId } from "@/lib/id";
 import type {
   AppState,
@@ -510,12 +514,16 @@ function reducer(state: AppState, action: Action): AppState {
 }
 
 export function ExpenseProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const initialState = useMemo(() => makeInitialState(), []);
   const [storedState, setStoredState, isHydrated] = useLocalStorage<AppState>(
     STORAGE_KEY,
     initialState,
   );
   const [hasLoadedStoredState, setHasLoadedStoredState] = useState(false);
+  const [hasLoadedCloudState, setHasLoadedCloudState] = useState(false);
+  const skipNextCloudWriteRef = useRef(false);
+  const latestStateRef = useRef(normalizeState(storedState));
   const [state, dispatchBase] = useReducer(
     reducer,
     normalizeState(storedState),
@@ -526,6 +534,15 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
   };
 
   const normalizedState = useMemo(() => normalizeState(state), [state]);
+
+  useEffect(() => {
+    latestStateRef.current = normalizedState;
+  }, [normalizedState]);
+
+  useEffect(() => {
+    setHasLoadedCloudState(false);
+    skipNextCloudWriteRef.current = false;
+  }, [user?.uid]);
 
   useEffect(() => {
     if (isHydrated && !hasLoadedStoredState) {
@@ -539,6 +556,59 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
       setStoredState(normalizedState);
     }
   }, [hasLoadedStoredState, normalizedState, setStoredState]);
+
+  useEffect(() => {
+    if (!user || !hasLoadedStoredState) {
+      return;
+    }
+
+    const stateRef = doc(db, "users", user.uid, "appState", "main");
+    const unsubscribe = onSnapshot(stateRef, (snapshot) => {
+      const data = snapshot.data() as { state?: AppState } | undefined;
+
+      if (!snapshot.exists() || !data?.state) {
+        void setDoc(
+          stateRef,
+          {
+            state: latestStateRef.current,
+            updatedAt: serverTimestamp(),
+            userId: user.uid,
+          },
+          { merge: true },
+        );
+        setHasLoadedCloudState(true);
+        return;
+      }
+
+      skipNextCloudWriteRef.current = true;
+      dispatchBase({ type: "HYDRATE", state: data.state });
+      setHasLoadedCloudState(true);
+    });
+
+    return unsubscribe;
+  }, [hasLoadedStoredState, user]);
+
+  useEffect(() => {
+    if (!user || !hasLoadedStoredState || !hasLoadedCloudState) {
+      return;
+    }
+
+    if (skipNextCloudWriteRef.current) {
+      skipNextCloudWriteRef.current = false;
+      return;
+    }
+
+    const stateRef = doc(db, "users", user.uid, "appState", "main");
+    void setDoc(
+      stateRef,
+      {
+        state: normalizedState,
+        updatedAt: serverTimestamp(),
+        userId: user.uid,
+      },
+      { merge: true },
+    );
+  }, [hasLoadedCloudState, hasLoadedStoredState, normalizedState, user]);
 
   const currentMonth = normalizedState.months[normalizedState.currentMonthKey];
   const currentExpenses = [...currentMonth.expenses].sort(
