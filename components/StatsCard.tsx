@@ -9,7 +9,7 @@ export function StatsCard() {
   const { currentMonth, getCategoryById } = useExpenses();
   const stats = useMemo(() => {
     const pesoExpenses = currentMonth.expenses.filter(
-      (expense) => expense.currency === "ARS",
+      (expense) => expense.currency === currentMonth.salaryCurrency,
     );
     const total = pesoExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const byCategory = new Map<string, number>();
@@ -25,7 +25,7 @@ export function StatsCard() {
       biggestCategoryId: biggest?.[0],
       biggestValue: biggest?.[1] ?? 0,
     };
-  }, [currentMonth.expenses]);
+  }, [currentMonth.expenses, currentMonth.salaryCurrency]);
 
   const biggestCategory = stats.biggestCategoryId
     ? getCategoryById(stats.biggestCategoryId)
@@ -41,7 +41,7 @@ export function StatsCard() {
         <StatRow
           icon={<Landmark className="size-5" />}
           label="Total gastado"
-          value={formatCurrency(stats.total)}
+          value={formatCurrency(stats.total, currentMonth.salaryCurrency)}
         />
         <StatRow
           icon={<ReceiptText className="size-5" />}
@@ -53,14 +53,14 @@ export function StatsCard() {
           label="Mayor categoría"
           value={
             biggestCategory
-              ? `${biggestCategory.icon} ${biggestCategory.name} · ${formatCurrency(stats.biggestValue)}`
+              ? `${biggestCategory.icon} ${biggestCategory.name} · ${formatCurrency(stats.biggestValue, currentMonth.salaryCurrency)}`
               : "Sin datos"
           }
         />
         <StatRow
           icon={<ReceiptText className="size-5" />}
           label="Promedio"
-          value={formatCurrency(stats.average)}
+          value={formatCurrency(stats.average, currentMonth.salaryCurrency)}
         />
       </div>
     </section>

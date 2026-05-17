@@ -13,14 +13,22 @@ import {
 import { DEFAULT_CATEGORIES, STORAGE_KEY } from "@/lib/constants";
 import { getMonthKey, monthKeyFromDateInput, shiftMonth } from "@/lib/date";
 import { createId } from "@/lib/id";
-import type { AppState, Category, CreditExpense, Expense, MonthData } from "@/lib/types";
+import type {
+  AppState,
+  Category,
+  CreditExpense,
+  CurrencyCode,
+  Expense,
+  MonthData,
+  SavingsGoal,
+} from "@/lib/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 type Action =
   | { type: "HYDRATE"; state: AppState }
   | { type: "SET_MONTH"; monthKey: string }
   | { type: "SHIFT_MONTH"; amount: number }
-  | { type: "SET_SALARY"; salary: number }
+  | { type: "SET_SALARY"; salary: number; currency: CurrencyCode }
   | { type: "ADD_EXPENSE"; expense: Omit<Expense, "id" | "monthKey"> }
   | { type: "UPDATE_EXPENSE"; expense: Expense }
   | { type: "DELETE_EXPENSE"; id: string; monthKey: string }
@@ -37,7 +45,10 @@ type Action =
       category: Omit<Category, "id" | "isDefault"> & { id?: string };
     }
   | { type: "UPDATE_CATEGORY"; category: Category }
-  | { type: "DELETE_CATEGORY"; id: string };
+  | { type: "DELETE_CATEGORY"; id: string }
+  | { type: "ADD_SAVINGS_GOAL"; goal: Omit<SavingsGoal, "id" | "createdAt"> }
+  | { type: "UPDATE_SAVINGS_GOAL"; goal: SavingsGoal }
+  | { type: "DELETE_SAVINGS_GOAL"; id: string };
 
 interface ExpenseContextValue {
   state: AppState;
@@ -46,6 +57,7 @@ interface ExpenseContextValue {
   currentCreditExpenses: CreditExpense[];
   dispatch: Dispatch<Action>;
   getCategoryById: (id: string) => Category | undefined;
+  getSavingsCategory: () => Category | undefined;
 }
 
 const ExpenseContext = createContext<ExpenseContextValue | undefined>(
@@ -53,7 +65,37 @@ const ExpenseContext = createContext<ExpenseContextValue | undefined>(
 );
 
 function makeMonth(monthKey: string): MonthData {
-  return { monthKey, salary: 0, expenses: [], creditExpenses: [] };
+  return {
+    monthKey,
+    salary: 0,
+    salaryCurrency: "ARS",
+    expenses: [],
+    creditExpenses: [],
+  };
+}
+
+function isSavingsCategory(category: Pick<Category, "name">) {
+  return category.name.trim().toLocaleLowerCase("es-AR") === "ahorro";
+}
+
+function ensureSavingsCategory(categories: Category[]): Category[] {
+  if (categories.some(isSavingsCategory)) {
+    return categories;
+  }
+
+  const savingsCategory = DEFAULT_CATEGORIES.find(isSavingsCategory);
+  if (!savingsCategory) {
+    return categories;
+  }
+
+  return [
+    ...categories,
+    {
+      ...savingsCategory,
+      id: createId(),
+      isDefault: true,
+    },
+  ];
 }
 
 function shiftDateInput(value: string, amount: number): string {
@@ -89,6 +131,7 @@ function makeInitialState(): AppState {
   return {
     categories,
     currentMonthKey,
+    savingsGoals: [],
     months: {
       [currentMonthKey]: makeMonth(currentMonthKey),
     },
@@ -105,6 +148,7 @@ function normalizeState(state: AppState): AppState {
       monthKey,
       {
         ...month,
+        salaryCurrency: month.salaryCurrency ?? "ARS",
         expenses: month.expenses.map((expense) => ({
           ...expense,
           currency: expense.currency ?? "ARS",
@@ -120,7 +164,15 @@ function normalizeState(state: AppState): AppState {
     ]),
   );
 
-  return { ...ensuredState, months };
+  return {
+    ...ensuredState,
+    categories: ensureSavingsCategory(ensuredState.categories ?? []),
+    months,
+    savingsGoals: (ensuredState.savingsGoals ?? []).map((goal) => ({
+      ...goal,
+      currency: goal.currency ?? "ARS",
+    })),
+  };
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -140,7 +192,11 @@ function reducer(state: AppState, action: Action): AppState {
         ...next,
         months: {
           ...next.months,
-          [month.monthKey]: { ...month, salary: action.salary },
+          [month.monthKey]: {
+            ...month,
+            salary: action.salary,
+            salaryCurrency: action.currency,
+          },
         },
       };
     }
@@ -306,6 +362,43 @@ function reducer(state: AppState, action: Action): AppState {
         categories: state.categories.filter((item) => item.id !== action.id),
       };
     }
+    case "ADD_SAVINGS_GOAL":
+      return {
+        ...state,
+        savingsGoals: [
+          {
+            ...action.goal,
+            id: createId(),
+            createdAt: new Date().toISOString(),
+          },
+          ...(state.savingsGoals ?? []),
+        ],
+      };
+    case "UPDATE_SAVINGS_GOAL":
+      return {
+        ...state,
+        savingsGoals: (state.savingsGoals ?? []).map((goal) =>
+          goal.id === action.goal.id ? action.goal : goal,
+        ),
+      };
+    case "DELETE_SAVINGS_GOAL":
+      return {
+        ...state,
+        savingsGoals: (state.savingsGoals ?? []).filter((goal) => goal.id !== action.id),
+        months: Object.fromEntries(
+          Object.entries(state.months).map(([monthKey, month]) => [
+            monthKey,
+            {
+              ...month,
+              expenses: month.expenses.map((expense) =>
+                expense.savingsGoalId === action.id
+                  ? { ...expense, savingsGoalId: undefined }
+                  : expense,
+              ),
+            },
+          ]),
+        ),
+      };
     default:
       return state;
   }
@@ -359,6 +452,7 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
       dispatch,
       getCategoryById: (id) =>
         normalizedState.categories.find((category) => category.id === id),
+      getSavingsCategory: () => normalizedState.categories.find(isSavingsCategory),
     }),
     [currentCreditExpenses, currentExpenses, currentMonth, normalizedState],
   );

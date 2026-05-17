@@ -12,6 +12,7 @@ export interface Expense {
   currency: CurrencyCode;
   description: string;
   categoryId: string;
+  savingsGoalId?: string;
   date: string;
   monthKey: string;
 }
@@ -36,9 +37,19 @@ export interface CreditExpense {
   monthKey: string;
 }
 
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currency: CurrencyCode;
+  targetDate?: string;
+  createdAt: string;
+}
+
 export interface MonthData {
   monthKey: string;
   salary: number;
+  salaryCurrency: CurrencyCode;
   expenses: Expense[];
   creditExpenses: CreditExpense[];
 }
@@ -47,4 +58,5 @@ export interface AppState {
   categories: Category[];
   months: Record<string, MonthData>;
   currentMonthKey: string;
+  savingsGoals: SavingsGoal[];
 }

@@ -1,6 +1,13 @@
 "use client";
 
-import { BarChart3, CreditCard, FolderKanban, LayoutDashboard, Plus } from "lucide-react";
+import {
+  BarChart3,
+  CreditCard,
+  FolderKanban,
+  LayoutDashboard,
+  PiggyBank,
+  Plus,
+} from "lucide-react";
 import { useState } from "react";
 import { CategoryManager } from "./CategoryManager";
 import { CreditCardSection } from "./CreditCardSection";
@@ -9,14 +16,16 @@ import { AddExpenseModal } from "./AddExpenseModal";
 import { MonthNavigator } from "./MonthNavigator";
 import { PieChartCard } from "./PieChartCard";
 import { SalaryCard } from "./SalaryCard";
+import { SavingsDashboard } from "./SavingsDashboard";
 import { StatsCard } from "./StatsCard";
 
-type View = "dashboard" | "expenses" | "credit" | "categories";
+type View = "dashboard" | "expenses" | "credit" | "savings" | "categories";
 
 const navItems = [
   { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
   { id: "expenses" as const, label: "Gastos", icon: BarChart3 },
   { id: "credit" as const, label: "Tarjeta", icon: CreditCard },
+  { id: "savings" as const, label: "Ahorros", icon: PiggyBank },
   { id: "categories" as const, label: "Categorías", icon: FolderKanban },
 ];
 
@@ -108,11 +117,13 @@ export function ExpenseTrackerApp() {
 
           {view === "credit" ? <CreditCardSection /> : null}
 
+          {view === "savings" ? <SavingsDashboard /> : null}
+
           {view === "categories" ? <CategoryManager /> : null}
         </div>
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 gap-2 rounded-xl border border-white/10 bg-[#12121a]/88 p-2 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-2 rounded-xl border border-white/10 bg-[#12121a]/88 p-2 backdrop-blur-xl lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = view === item.id;

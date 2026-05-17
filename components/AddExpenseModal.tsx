@@ -23,7 +23,7 @@ interface AddExpenseModalProps {
 type PaymentMethod = "debit" | "credit";
 
 export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalProps) {
-  const { state, dispatch } = useExpenses();
+  const { currentMonth, state, dispatch } = useExpenses();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<CurrencyCode>("ARS");
@@ -47,14 +47,14 @@ export function AddExpenseModal({ expense, isOpen, onClose }: AddExpenseModalPro
 
     setPaymentMethod("debit");
     setAmount(expense ? formatAmountInput(String(expense.amount)) : "");
-    setCurrency(expense?.currency ?? "ARS");
+    setCurrency(expense?.currency ?? currentMonth.salaryCurrency);
     setInstallments("3");
     setCardName("visa");
     setDescription(expense?.description ?? "");
     setCategoryId(expense?.categoryId ?? state.categories[0]?.id ?? "");
     setDate(expense ? toDateInputValue(expense.date) : todayInputValue());
     setIsCreatingCategory(false);
-  }, [expense, isOpen, state.categories]);
+  }, [currentMonth.salaryCurrency, expense, isOpen, state.categories]);
 
   if (!isOpen) {
     return null;

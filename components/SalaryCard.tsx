@@ -1,33 +1,52 @@
 "use client";
 
-import { AlertTriangle, BadgeDollarSign, Eye, EyeOff, Pencil } from "lucide-react";
+import {
+  AlertTriangle,
+  BadgeDollarSign,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Pencil,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useExpenses } from "@/context/ExpenseContext";
-import { formatCurrency } from "@/lib/money";
+import { CURRENCY_OPTIONS, formatCurrency } from "@/lib/money";
+import type { CurrencyCode } from "@/lib/types";
 
 export function SalaryCard() {
   const { currentMonth, dispatch } = useExpenses();
   const [salary, setSalary] = useState(String(currentMonth.salary || ""));
+  const [salaryCurrency, setSalaryCurrency] = useState<CurrencyCode>(
+    currentMonth.salaryCurrency,
+  );
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const total = useMemo(
     () =>
       currentMonth.expenses
-        .filter((expense) => expense.currency === "ARS")
+        .filter((expense) => expense.currency === currentMonth.salaryCurrency)
         .reduce((sum, expense) => sum + expense.amount, 0),
-    [currentMonth.expenses],
+    [currentMonth.expenses, currentMonth.salaryCurrency],
   );
   const remaining = currentMonth.salary - total;
   const spentPercent =
     currentMonth.salary > 0 ? Math.min((total / currentMonth.salary) * 100, 130) : 0;
   const isOverBudget = currentMonth.salary > 0 && total > currentMonth.salary;
-  const visibleBalance = isBalanceHidden ? "$ •••••" : formatCurrency(remaining);
-  const visibleSalary = isBalanceHidden ? "$ •••••" : formatCurrency(currentMonth.salary);
-  const visibleTotal = isBalanceHidden ? "$ •••••" : formatCurrency(total);
+  const hiddenAmount = `${currentMonth.salaryCurrency} •••••`;
+  const visibleBalance = isBalanceHidden
+    ? hiddenAmount
+    : formatCurrency(remaining, currentMonth.salaryCurrency);
+  const visibleSalary = isBalanceHidden
+    ? hiddenAmount
+    : formatCurrency(currentMonth.salary, currentMonth.salaryCurrency);
+  const visibleTotal = isBalanceHidden
+    ? hiddenAmount
+    : formatCurrency(total, currentMonth.salaryCurrency);
 
   useEffect(() => {
     setSalary(String(currentMonth.salary || ""));
-  }, [currentMonth.monthKey, currentMonth.salary]);
+    setSalaryCurrency(currentMonth.salaryCurrency);
+  }, [currentMonth.monthKey, currentMonth.salary, currentMonth.salaryCurrency]);
 
   return (
     <section className="glass-card overflow-hidden p-5 sm:p-6">
@@ -75,7 +94,7 @@ export function SalaryCard() {
 
       {isEditingSalary ? (
         <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
             <label>
               <span className="label">Monto del mes</span>
               <input
@@ -84,7 +103,11 @@ export function SalaryCard() {
                 onChange={(event) => setSalary(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
-                    dispatch({ type: "SET_SALARY", salary: Number(salary) || 0 });
+                    dispatch({
+                      type: "SET_SALARY",
+                      salary: Number(salary) || 0,
+                      currency: salaryCurrency,
+                    });
                     setIsEditingSalary(false);
                   }
                 }}
@@ -93,10 +116,33 @@ export function SalaryCard() {
                 value={salary}
               />
             </label>
+            <label>
+              <span className="label">Moneda por defecto</span>
+              <div className="relative">
+                <select
+                  className="field appearance-none pr-11"
+                  onChange={(event) =>
+                    setSalaryCurrency(event.target.value as CurrencyCode)
+                  }
+                  value={salaryCurrency}
+                >
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              </div>
+            </label>
             <button
               className="button-primary justify-center"
               onClick={() => {
-                dispatch({ type: "SET_SALARY", salary: Number(salary) || 0 });
+                dispatch({
+                  type: "SET_SALARY",
+                  salary: Number(salary) || 0,
+                  currency: salaryCurrency,
+                });
                 setIsEditingSalary(false);
               }}
               type="button"
@@ -126,7 +172,10 @@ export function SalaryCard() {
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
           <AlertTriangle className="size-4 shrink-0" />
           Tus gastos superan el ingreso mensual por{" "}
-          {isBalanceHidden ? "$ •••••" : formatCurrency(Math.abs(remaining))}.
+          {isBalanceHidden
+            ? hiddenAmount
+            : formatCurrency(Math.abs(remaining), currentMonth.salaryCurrency)}
+          .
         </div>
       ) : null}
     </section>

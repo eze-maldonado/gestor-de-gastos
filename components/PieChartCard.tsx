@@ -18,9 +18,14 @@ export function PieChartCard() {
   const { currentMonth, getCategoryById } = useExpenses();
   const data = useMemo<ChartDatum[]>(() => {
     const grouped = new Map<string, number>();
-    currentMonth.expenses.filter((expense) => expense.currency === "ARS").forEach((expense) => {
-      grouped.set(expense.categoryId, (grouped.get(expense.categoryId) ?? 0) + expense.amount);
-    });
+    currentMonth.expenses
+      .filter((expense) => expense.currency === currentMonth.salaryCurrency)
+      .forEach((expense) => {
+        grouped.set(
+          expense.categoryId,
+          (grouped.get(expense.categoryId) ?? 0) + expense.amount,
+        );
+      });
 
     return [...grouped.entries()]
       .map(([categoryId, value]) => {
@@ -34,7 +39,7 @@ export function PieChartCard() {
         };
       })
       .sort((a, b) => b.value - a.value);
-  }, [currentMonth.expenses, getCategoryById]);
+  }, [currentMonth.expenses, currentMonth.salaryCurrency, getCategoryById]);
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
@@ -75,14 +80,18 @@ export function PieChartCard() {
                     borderRadius: "8px",
                     color: "#fff",
                   }}
-                  formatter={(value) => formatCurrency(Number(value))}
+                  formatter={(value) =>
+                    formatCurrency(Number(value), currentMonth.salaryCurrency)
+                  }
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Total</p>
-                <p className="font-display text-3xl text-white">{formatCurrency(total)}</p>
+                <p className="font-display text-3xl text-white">
+                  {formatCurrency(total, currentMonth.salaryCurrency)}
+                </p>
               </div>
             </div>
           </div>
@@ -98,7 +107,9 @@ export function PieChartCard() {
                   <span className="shrink-0">{item.icon}</span>
                   <span className="min-w-0 truncate">{item.name}</span>
                 </span>
-                <span className="font-semibold text-white">{formatCurrency(item.value)}</span>
+                <span className="font-semibold text-white">
+                  {formatCurrency(item.value, currentMonth.salaryCurrency)}
+                </span>
                 <span className="w-12 text-right text-slate-500">
                   {Math.round((item.value / total) * 100)}%
                 </span>
